@@ -73,20 +73,20 @@ class BiMax(object):
 
         """
         limits = self.long_interval(wc, n, t)
-        print(wc, limits)
+        #print(limits)
         result = mp.quad(lambda z: self.za_l_integrand(z, wc, l, n, t), limits)
         return result * self.z_unit * mp.mpc(0, 1)/ mp.sqrt(tc)
 
-    def bimax_integrand(z, wc, l, n, t):
+    def bimax_integrand(self, z, wc, l, n, t):
         """
         Integrand of electron-noise integral.
         
         """
         return f1(wc*l/z/mp.sqrt(2)) * z * \
             (mp.exp(-z**2) + n/mp.sqrt(t)*mp.exp(-z**2 / t)) / \
-            (mp.fabs(d_l(z, wc, n, t))**2 * wc**2)
+            (mp.fabs(BiMax.d_l(z, wc, n, t))**2 * wc**2)
 
-    def bimax(wrel, l, n, t, tc):
+    def bimax(self, wrel, l, n, t, tc):
         """
         electron noise.
         w: f/f_p, where f_p is the total plasma frequency.

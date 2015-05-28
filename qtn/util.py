@@ -23,6 +23,27 @@ def timing(f):
         return ret
     return wrap
 
+def ldeb(ne, te):
+    """ 
+    Return the Debye length.
+    ne: electron density
+    te: electron temperature
+    SI units
+    ~ 69.01 * sqrt(te/ne)
+
+    """
+    
+    return mp.sqrt(permittivity * boltzmann/ echarge**2) * mp.sqrt(te/ne)
+
+def fp(ne):
+    """ 
+    Return the plasma frequency. 
+    ~ 8.98 * sqrt(ne)
+
+    """
+    
+    return mp.sqrt(echarge**2/emass/permittivity)/2/mp.pi * mp.sqrt(ne)
+
 def zp(x):
     """
     plasma dispersion function                                
