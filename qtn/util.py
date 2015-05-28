@@ -1,7 +1,7 @@
 import time
 import mpmath as mp
 from mpmath import mpf, mpc
-from scipy.special import j0
+import scipy.special as scsp
 
 # fundamental constants
 boltzmann = 1.3806488e-23  # Joule/Kelvin
@@ -21,7 +21,7 @@ def timing(f):
         return ret
     return wrap
 
-def zp_mp(x):
+def zp(x):
     """
     plasma dispersion function                                
     using complementary error function in mpmath library.                       
@@ -29,19 +29,19 @@ def zp_mp(x):
     """
     return -mp.sqrt(mp.pi) * mp.exp(-x**2) * mp.erfi(x) + mpc(0, 1) * mp.sqrt(mp.pi) * mp.exp(-x**2)
 
-def zpd_mp(x):
+def zpd(x):
     """
     Derivative of plasma dispersion function.                                                   
                                                                                 
     """
-    return -mpf(2) * (mpf(1) + x * zp_mp(x))
+    return -mpf(2) * (mpf(1) + x * zp(x))
 
-def j0_mp(x):
+def j0(x):
     """zeroth order bessel function, the argument may be of "mpf" type.
     May be faster than general besselj(n, x) from mpmath library.
     Need profiler to see.
     """
-    return j0(float(str(x)))
+    return scsp.j0(float(str(x)))
 
 def eta(tc):
     """
