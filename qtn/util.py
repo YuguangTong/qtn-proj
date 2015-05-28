@@ -4,8 +4,10 @@ from mpmath import mpf, mpc
 import scipy.special as scsp
 
 # fundamental constants
-boltzmann = 1.3806488e-23  # Joule/Kelvin
+boltzmann = 1.3806488e-23  # J/K
 emass = 9.10938291e-31     # kg
+echarge = 1.60217657e-19   # C
+permittivity = 8.854187817e-12  # F/m
 cspeed = 299792458         # m/s
 
 

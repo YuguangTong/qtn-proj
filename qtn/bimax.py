@@ -1,6 +1,7 @@
 import mpmath as mp
 import numpy as np
 from .util import (zp, zpd, j0, f1, f2)
+from .util import (boltzmann, emass, echarge, permittivity, cspeed)
 
 class BiMax(object):
     def __init__(self, ant_len, al_ratio, base_cap):
@@ -96,3 +97,25 @@ class BiMax(object):
         print(limits)
         result = mp.quad(lambda z: self.bimax_integrand(z, wc, l, n, t), limits)
         return result * self.v_unit * mp.sqrt(tc)
+
+    def zr_mp(self, wc, l, tc):
+        """
+        Return receiver impedance, assume mainly due to base capacitance.
+        The antenna monopole length 45m is hardwired in.
+        
+        """
+        ldc = self.ant_len/l
+        nc = permittivity * boltzmann * tc/ ldc**2 / echarge**2
+        wpc = mp.sqrt( nc * echarge**2 / emass / permittivity)
+        return mp.mpc(0, 1/(wc * wpc * self.base_cap))
+
+    def gamma(self, wrel, l, n, t, tc):
+        if wrel > 1.0 and wrel < 1.2:
+            mp.mp.dps = 80
+        else:
+            mp.mp.dps = 40
+        wc = wrel * mp.sqrt(1+n)
+        za = self.za_l(wc, l, n, t, tc)
+        zr = self.zr_mp(wc, l, tc)
+        mp.mp.dps = 15
+        return mp.fabs((zr+za)/zr)**2
