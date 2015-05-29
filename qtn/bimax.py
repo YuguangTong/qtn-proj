@@ -1,12 +1,14 @@
 import mpmath as mp
 import numpy as np
-from .util import (zp, zpd, j0, f1, f2)
+import scipy.integrate as scint
+from .util import (zp, zpd, j0, f1, f2, fperp)
 from .util import (boltzmann, emass, echarge, permittivity, cspeed)
 
 class BiMax(object):
-    def __init__(self, ant_len, al_ratio, base_cap):
+    def __init__(self, ant_len, ant_rad, base_cap):
         self.ant_len = ant_len
-        self.al_ratio = al_ratio
+        self.ant_rad = ant_rad
+        self.al_ratio = ant_rad/ant_len
         self.base_cap = base_cap
         self.z_unit = 8.313797e6
         self.v_unit = 1.62760e-15
@@ -109,13 +111,49 @@ class BiMax(object):
         wpc = mp.sqrt( nc * echarge**2 / emass / permittivity)
         return mp.mpc(0, 1/(wc * wpc * self.base_cap))
 
-    def gamma(self, wrel, l, n, t, tc):
+    def gamma_shot(self, wrel, l, n, t, tc):
+        """
+        Calculate 
+        1, transfer gain
+        2, electron shot noise
+        
+        """
         if wrel > 1.0 and wrel < 1.2:
             mp.mp.dps = 80
         else:
             mp.mp.dps = 40
         wc = wrel * mp.sqrt(1+n)
         za = self.za_l(wc, l, n, t, tc)
-        zr = self.zr_mp(wc, l, tc)
         mp.mp.dps = 15
-        return mp.fabs((zr+za)/zr)**2
+        zr = self.zr_mp(wc, l, tc)
+
+        # below calculating shot noise:
+        ldc = self.ant_len/l
+        nc  =permittivity * boltzmann * tc/ ldc**2 / echarge**2
+        vtc = np.sqrt(2 * boltzmann * tc/ emass)
+        ne = nc * vtc * (1 + n * mp.sqrt(t)) * 2 * np.pi * self.ant_rad * self.ant_len / np.sqrt(4 * np.pi)
+        ###################
+        ## a: coefficient in shot noise. see Issautier et al. 1999
+        ###################
+        a = 1 + echarge * 3.6 / boltzmann/tc
+        shot_noise = 2 * a * echarge**2 * mp.fabs(za)**2 * ne        
+        return [mp.fabs((zr+za)/zr)**2, shot_noise]
+
+    def proton(self, wc, l, tep, tc, vsw):
+        """
+        proton noise.
+        wc: w/w_c, where w_c is the core electron plasma frequency.
+        l: l_ant/l_dc, where l_ant is antenna length
+        l_dc: core electron debye length.
+        tep: T_e/T_p
+        tc: core electron temperature
+        vsw: solar wind speed.
+
+        """
+        vtc = np.sqrt(2 * boltzmann * tc/ emass)
+        omega = wc * vtc/vsw /np.sqrt(2.)
+        integrand = lambda y: y * fperp(y * l)/ (y**2 + 1 + omega**2) / (y**2 + 1 + omega**2 + tep)
+        integral = scint.quad(integrand, 0, np.inf, epsrel = 1.e-8) 
+        return integral[0] * boltzmann * tc/ (2 * np.pi * permittivity * vsw)
+
+   

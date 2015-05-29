@@ -2,6 +2,7 @@ import time
 import mpmath as mp
 from mpmath import mpf, mpc
 import scipy.special as scsp
+from scipy.special import j1, itj0y0
 
 # fundamental constants
 boltzmann = 1.3806488e-23  # J/K
@@ -92,3 +93,10 @@ def f2(x):
     term2 = 2*x**2 * (mp.cos(2*x) - mp.cos(x))
     term3 = x * (mp.sin(2*x) - 2*mp.sin(x)) - (mp.cos(2*x) - 4* mp.cos(x)  + 3)
     return (term1 + term2 + term3)/(12 * x**2)
+
+def fperp(x):
+    """
+    result of angular integration in proton noise integration.
+    
+    """
+    return 8./x * (2*itj0y0(x)[0] - itj0y0(2*x)[0] + j1(2*x) - 2*j1(x))
