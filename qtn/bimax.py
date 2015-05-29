@@ -96,7 +96,7 @@ class BiMax(object):
         """
         wc = wrel * mp.sqrt(1+n)
         limits = self.long_interval(wc, n, t)
-        print(limits)
+        #print(limits)
         result = mp.quad(lambda z: self.bimax_integrand(z, wc, l, n, t), limits)
         return result * self.v_unit * mp.sqrt(tc)
 
