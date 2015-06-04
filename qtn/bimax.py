@@ -139,7 +139,7 @@ class BiMax(object):
         shot_noise = 2 * a * echarge**2 * mp.fabs(za)**2 * ne        
         return [mp.fabs((zr+za)/zr)**2, shot_noise]
 
-    def proton(self, wc, l, tep, tc, vsw):
+    def proton(self, wc, l, t, tep, tc, vsw):
         """
         proton noise.
         wc: w/w_c, where w_c is the core electron plasma frequency.
@@ -155,5 +155,4 @@ class BiMax(object):
         integrand = lambda y: y * fperp(y * l)/ (y**2 + 1 + omega**2) / (y**2 + 1 + omega**2 + tep)
         integral = scint.quad(integrand, 0, np.inf, epsrel = 1.e-8) 
         return integral[0] * boltzmann * tc/ (2 * np.pi * permittivity * vsw)
-
-   
+ 
