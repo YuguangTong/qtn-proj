@@ -1,6 +1,7 @@
 import time
 import mpmath as mp
 from mpmath import mpf, mpc
+from mpmath import hyp2f1, gamma
 import scipy.special as scsp
 from scipy.special import j1, itj0y0
 
@@ -100,3 +101,13 @@ def fperp(x):
     
     """
     return 8./x * (2*itj0y0(x)[0] - itj0y0(2*x)[0] + j1(2*x) - 2*j1(x))
+
+def zk(z, k):
+    """
+    modified dispersion function for Kappa distribution.
+    (Mace and Hellberg, 1995)
+    
+    """
+    i = mp.mpc(0, 1)
+    coeff = i * (k + 0.5) * (k-0.5) / (mp.sqrt(k**3) * (k+1))
+    return coeff * hyp2f1(1, 2*k+2, k+2, (1-z/(i * mp.sqrt(k)))/2)
