@@ -6,11 +6,12 @@ from .util import (zk, zp, zpd, j0, f1)
 from .util import (boltzmann, emass, echarge, permittivity, cspeed)
 
 class MaxKappa(object):
-    def __init__(self, ant_len, ant_rad, base_cap):
+    def __init__(self, ant_len, ant_rad, base_cap, scpot=0):
         self.ant_len = ant_len
         self.ant_rad = ant_rad
         self.al_ratio = ant_rad/ant_len
         self.base_cap = base_cap
+        self.scpot = scpot
 
     @staticmethod
     def e_l(zc, wc, n, t, k):
@@ -45,7 +46,7 @@ class MaxKappa(object):
         divide the integration integrals.
         
         """
-        if wrel < 1:
+        if wrel < 1 or wrel > 1.3:
             return [0, mp.inf]
         else:
             guesses = [4, 6, 8, 10, 12, 14]
@@ -64,29 +65,6 @@ class MaxKappa(object):
                 int_range += [mp.fabs(root)]
         int_range = np.sort(int_range)
         return int_range
-
-    @staticmethod
-    def bimax_integrand(self, z, wc, l, n, t):
-        """
-        Integrand of electron-noise integral.
-        
-        """
-        return f1(wc*l/z/mp.sqrt(2)) * z * \
-            (mp.exp(-z**2) + n/mp.sqrt(t)*mp.exp(-z**2 / t)) / \
-            (mp.fabs(BiMax.d_l(z, wc, n, t))**2 * wc**2)
-
-    @staticmethod
-    def bimax(self, wrel, l, n, t, tc):
-        """
-        electron noise.
-        w: f/f_p, where f_p is the total plasma frequency.
-        
-        """
-        wc = wrel * mp.sqrt(1+n)
-        limits = self.long_interval(wc, n, t)
-        #print(limits)
-        result = mp.quad(lambda z: self.bimax_integrand(z, wc, l, n, t), limits)
-        return result * self.v_unit * mp.sqrt(tc)
 
     @staticmethod
     def maxkappa_integrand(zc, wc, lc, n, t, k):
@@ -111,6 +89,8 @@ class MaxKappa(object):
         int_range = MaxKappa.int_interval(wrel, n, t, k)
         coeff = 16 * emass/mp.pi**(3/2) /permittivity /wc**2 * mp.sqrt(2*boltzmann*Tc/emass)
         integral = mp.quad(lambda z: MaxKappa.maxkappa_integrand(z, wc, lc, n, t, k), int_range)
+        print(int_range)
+        print(integral)
         return coeff * integral 
 
     
@@ -122,7 +102,6 @@ class MaxKappa(object):
         ka = kl * self.al_ratio
         return f1(kl) * j0(ka)**2 / MaxKappa.e_l(zc, wc, n, t, k) / zc**2
 
-    
     def za(self, wrel, lc, n, t, k, Tc):
         """
         antenna impedance
@@ -146,19 +125,19 @@ class MaxKappa(object):
         wpc = mp.sqrt( nc * echarge**2 / emass / permittivity)
         return mp.mpc(0, 1/(wc * wpc * self.base_cap))
 
-    def gamma_shot(self, wrel, l, n, t, tc):
+    def gamma_shot(self, wrel, l, n, t, k, tc):
         """
         Calculate 
         1, transfer gain
         2, electron shot noise
         
         """
-        if wrel > 1.0 and wrel < 1.2:
-            mp.mp.dps = 80
-        else:
+        if wrel > 1.0 and wrel < 1.1:
             mp.mp.dps = 40
+        else:
+            mp.mp.dps = 20
         wc = wrel * mp.sqrt(1+n)
-        za_val = self.za(wrel, l, n, t, tc)
+        za_val = self.za(wrel, l, n, t, k, tc)
         mp.mp.dps = 15
         zr_val = self.zr(wc, l, tc)
 
@@ -167,10 +146,10 @@ class MaxKappa(object):
         nc  =permittivity * boltzmann * tc/ ldc**2 / echarge**2
         vtc = np.sqrt(2 * boltzmann * tc/ emass)
         ne = nc * vtc * (1 + n * mp.sqrt(t)) * 2 * np.pi * self.ant_rad * self.ant_len / np.sqrt(4 * np.pi)
-        ###################
-        ## a: coefficient in shot noise. see Issautier et al. 1999
-        ###################
-        a = 1 + echarge * 3.6 / boltzmann/tc
+        ###################################
+        ## a: coefficient in shot noise. ##
+        ###################################
+        a = 1 + echarge * self.scpot / boltzmann/tc
         shot_noise = 2 * a * echarge**2 * mp.fabs(za_val)**2 * ne        
         return [mp.fabs((zr_val+za_val)/zr_val)**2, shot_noise]
 
