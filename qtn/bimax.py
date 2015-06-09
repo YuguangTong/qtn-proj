@@ -138,8 +138,8 @@ class BiMax(object):
         a = 1 + echarge * 3.6 / boltzmann/tc
         shot_noise = 2 * a * echarge**2 * mp.fabs(za)**2 * ne        
         return [mp.fabs((zr+za)/zr)**2, shot_noise]
-
-    def proton(self, wc, l, t, tep, tc, vsw):
+ 
+    def proton(self, f, ne, n, t, tp, tc, vsw):
         """
         proton noise.
         wc: w/w_c, where w_c is the core electron plasma frequency.
@@ -150,9 +150,47 @@ class BiMax(object):
         vsw: solar wind speed.
 
         """
-        vtc = np.sqrt(2 * boltzmann * tc/ emass)
-        omega = wc * vtc/vsw /np.sqrt(2.)
-        integrand = lambda y: y * fperp(y * l)/ (y**2 + 1 + omega**2) / (y**2 + 1 + omega**2 + tep)
-        integral = scint.quad(integrand, 0, np.inf, epsrel = 1.e-8) 
-        return integral[0] * boltzmann * tc/ (2 * np.pi * permittivity * vsw)
- 
+        ne = ne * 1e6
+        tp = tp * echarge/boltzmann
+        tc = tc * echarge/boltzmann
+        w_p = np.sqrt(echarge**2 * ne/emass/permittivity)
+        te = (tc + tc * t * n)/(1+n)
+        tg = tc * (1 + n)/(1 + n/t)
+        ld = np.sqrt(permittivity * boltzmann * tg/ne/ echarge**2)
+        lrel = self.ant_len/ld
+        vte = np.sqrt(2 * boltzmann * te/ emass)
+        omega = f * 2 * np.pi * ld/vsw
+        tep = tg/tp
+        M = vsw/vte
+        integrand = lambda y: y * fperp(y * lrel)/ (y**2 + 1 + omega**2) / (y**2 + 1 + omega**2 + tep)
+        integral = scint.quad(integrand, 0, np.inf, epsrel = 1.e-4) 
+        return mp.sqrt(2*emass*boltzmann*tg)/(4*mp.pi*permittivity* M) *  integral[0]
+
+    def electron_noise(self, f, ne, n, t, tp, tc, vsw):
+        """
+        a wrapper for bimax method.
+        takes in raw argument and calculate the relative arguments.
+
+        """
+        ne *= 1e6
+        nc = ne/(1+n)
+        tc *= echarge/ boltzmann
+        ldc = np.sqrt(permittivity * boltzmann * tc/nc/echarge**2)
+        lc = self.ant_len/ldc
+        w_p = np.sqrt(echarge**2 * ne/emass/permittivity)
+        wrel = f * 2 * mp.pi/w_p
+        return self.bimax(wrel, lc, n, t, tc)
+
+    def gain_shot(self, f, ne, n, t, tp, tc, vsw):
+        """
+        a wrapper for gamma_shot method.
+        
+        """
+        ne *= 1e6
+        nc = ne/(1+n)
+        tc *= echarge/ boltzmann
+        ldc = np.sqrt(permittivity * boltzmann * tc/nc/echarge**2)
+        lc = self.ant_len/ldc
+        w_p = np.sqrt(echarge**2 * ne/emass/permittivity)
+        wrel = f * 2 * mp.pi/w_p
+        return self.gamma_shot(wrel, lc, n, t, tc)

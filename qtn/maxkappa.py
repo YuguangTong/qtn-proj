@@ -93,6 +93,12 @@ class MaxKappa(object):
         print(integral)
         return coeff * integral 
 
+    def electron_noise():
+        """
+        a wrapper of maxkappa method.
+
+        """
+        
     
     def za_integrand(self, zc, wc, lc, n, t, k):
         """
