@@ -3,7 +3,7 @@ import numpy as np
 import scipy.integrate as scint
 from mpmath import gamma
 from .util import (zk, zp, zpd, j0, f1)
-from .util import (boltzmann, emass, echarge, permittivity, cspeed)
+from .util import (boltzmann, emass, echarge, permittivity, cspeed, fperp)
 
 class MaxKappa(object):
     def __init__(self, ant_len, ant_rad, base_cap, scpot=0):
@@ -11,7 +11,6 @@ class MaxKappa(object):
         self.ant_rad = ant_rad
         self.al_ratio = ant_rad/ant_len
         self.base_cap = base_cap
-        self.scpot = scpot
 
     @staticmethod
     def e_l(zc, wc, n, t, k):
@@ -89,16 +88,20 @@ class MaxKappa(object):
         int_range = MaxKappa.int_interval(wrel, n, t, k)
         coeff = 16 * emass/mp.pi**(3/2) /permittivity /wc**2 * mp.sqrt(2*boltzmann*Tc/emass)
         integral = mp.quad(lambda z: MaxKappa.maxkappa_integrand(z, wc, lc, n, t, k), int_range)
-        print(int_range)
-        print(integral)
         return coeff * integral 
 
-    def electron_noise():
+    def electron_noise(self, f, ne, n, t, tp, tc, k, vsw):
         """
         a wrapper of maxkappa method.
 
         """
-        
+        ne = ne * 1e6
+        tc = tc * echarge/boltzmann
+        w_p = np.sqrt(echarge**2 * ne/emass/permittivity)
+        wrel = f * 2 * np.pi / w_p
+        ldc = np.sqrt(permittivity * boltzmann * tc/ne/ echarge**2)
+        lc = self.ant_len/ldc
+        return self.maxkappa(wrel, lc, n, t, k, tc)
     
     def za_integrand(self, zc, wc, lc, n, t, k):
         """
@@ -117,9 +120,10 @@ class MaxKappa(object):
         coeff = 4*mp.mpc(0,1) / mp.pi**2 / permittivity
         coeff *= mp.sqrt(emass/2/boltzmann/Tc)
         int_range = MaxKappa.int_interval(wrel, n, t, k)
-        integral = mp.quad(lambda zc: self.za_integrand(zc, wc, lc, n, t, k), int_range)
+        integral = mp.quad(lambda zc: self.za_integrand(zc, wc, lc, n, t, k), int_range, method='tanh-sinh')
         return coeff * integral
-
+    
+        
     def zr(self, wc, lc, tc):
         """
         Return receiver impedance, assume mainly due to base capacitance.
@@ -130,6 +134,27 @@ class MaxKappa(object):
         nc = permittivity * boltzmann * tc/ ldc**2 / echarge**2
         wpc = mp.sqrt( nc * echarge**2 / emass / permittivity)
         return mp.mpc(0, 1/(wc * wpc * self.base_cap))
+
+    def impedance(self, f, ne, n, t, tp, tc, k, vsw):
+        """
+        returns antenna impedance and base capacitance impedance.
+        """
+        ne *= 1e6
+        nc = ne/(1+n)
+        tc *= echarge/ boltzmann
+        ldc = np.sqrt(permittivity * boltzmann * tc/nc/echarge**2)
+        lc = self.ant_len/ldc
+        w_p = np.sqrt(echarge**2 * ne/emass/permittivity)
+        wrel = f * 2 * mp.pi/w_p
+        if wrel > 1.0 and wrel < 1.1:
+            mp.mp.dps = 40
+        else:
+            mp.mp.dps = 20
+        za_val = self.za(wrel, lc, n, t, k, tc)
+        mp.mp.dps = 15
+        wc = wrel * (1+n)
+        zr_val = self.zr(wc, lc, tc)
+        return [za_val, zr_val]
 
     def gamma_shot(self, wrel, l, n, t, k, tc):
         """
@@ -155,11 +180,12 @@ class MaxKappa(object):
         ###################################
         ## a: coefficient in shot noise. ##
         ###################################
-        a = 1 + echarge * self.scpot / boltzmann/tc
+        scpot= 4
+        a = 1 + echarge * scpot / boltzmann/tc
         shot_noise = 2 * a * echarge**2 * mp.fabs(za_val)**2 * ne        
         return [mp.fabs((zr_val+za_val)/zr_val)**2, shot_noise]
 
-    def proton(self, wc, l, t, tep, tc, vsw):
+    def proton(self, f, ne, n, t, tp, tc, k, vsw):
         """
         proton noise.
         wc: w/w_c, where w_c is the core electron plasma frequency.
@@ -170,9 +196,18 @@ class MaxKappa(object):
         vsw: solar wind speed.
 
         """
-        vtc = np.sqrt(2 * boltzmann * tc/ emass)
-        omega = wc * vtc/vsw /np.sqrt(2.)
-        integrand = lambda y: y * fperp(y * l)/ (y**2 + 1 + omega**2) / (y**2 + 1 + omega**2 + tep)
-        integral = scint.quad(integrand, 0, np.inf, epsrel = 1.e-8) 
-        return integral[0] * boltzmann * tc/ (2 * np.pi * permittivity * vsw)
- 
+        ne = ne * 1e6
+        tp = tp * echarge/boltzmann
+        tc = tc * echarge/boltzmann
+        w_p = np.sqrt(echarge**2 * ne/emass/permittivity)
+        te = (tc + tc * t * n)/(1+n)
+        tg = tc * (1 + n)/(1 + n/t)
+        ld = np.sqrt(permittivity * boltzmann * tg/ne/ echarge**2)
+        lrel = self.ant_len/ld
+        vte = np.sqrt(2 * boltzmann * te/ emass)
+        omega = f * 2 * np.pi * ld/vsw
+        tep = tg/tp
+        M = vsw/vte
+        integrand = lambda y: y * fperp(y * lrel)/ (y**2 + 1 + omega**2) / (y**2 + 1 + omega**2 + tep)
+        integral = scint.quad(integrand, 0, np.inf, epsrel = 1.e-4) 
+        return mp.sqrt(2*emass*boltzmann*tg)/(4*mp.pi*permittivity* M) *  integral[0]
