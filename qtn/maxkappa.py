@@ -211,3 +211,23 @@ class MaxKappa(object):
         integrand = lambda y: y * fperp(y * lrel)/ (y**2 + 1 + omega**2) / (y**2 + 1 + omega**2 + tep)
         integral = scint.quad(integrand, 0, np.inf, epsrel = 1.e-4) 
         return mp.sqrt(2*emass*boltzmann*tg)/(4*mp.pi*permittivity* M) *  integral[0]
+
+    def proton_parallel(self, f, ne, n, t, tp, tc, k, vsw):
+        """
+        proton noise when antenna is parallel to the plasma flow.
+
+        """
+        ne = ne * 1e6
+        tp = tp * echarge/boltzmann
+        tc = tc * echarge/boltzmann
+        tg = tc * (1 + n)/(1 + n/t)
+        ld = np.sqrt(permittivity * boltzmann * tg/ne/ echarge**2)
+        lrel = self.ant_len/ld
+        omega = f * 2 * np.pi * ld/vsw
+        tep = tg/tp
+        term_1 = 8 * boltzmann/ (np.pi * permittivity)
+        term_2 = tg/vsw/tep
+        term_3 = np.sin(lrel * omega/2)**4 / (lrel*omega)**2
+        term_4 = np.log((1+t+omega**2)/(1+omega**2))
+        return term_1 * term_2 * term_3 * term_4
+        
