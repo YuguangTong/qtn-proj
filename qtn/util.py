@@ -1,8 +1,9 @@
 import time
 import mpmath as mp
+import numpy as np
 from mpmath import mpf, mpc
 from mpmath import hyp2f1, gamma
-import scipy.special as scsp
+import scipy.special
 from scipy.special import j1, itj0y0
 
 # fundamental constants
@@ -22,7 +23,7 @@ def timing(f):
         time1 = time.time()
         ret = f(*args)
         time2 = time.time()
-        print('%s function took %0.3f ms', f.__name__, (time2-time1)*1000.0)
+        print('{0} function took {1:.3f} ms'.format(f.__name__, (time2-time1)*1000.0))
         return ret
     return wrap
 
@@ -47,6 +48,54 @@ def fp(ne):
     
     return mp.sqrt(echarge**2/emass/permittivity)/2/mp.pi * mp.sqrt(ne)
 
+c_arr = np.array([
+2.237687789201900 - 1.625940856173727j,
+-2.237687789201900 - 1.625940856173727j,
+1.465234126106004 - 1.789620129162444j,
+-1.465234126106004 - 1.789620129162444j,
+0.8392539817232638 - 1.891995045765206j,
+-0.8392539817232638 - 1.891995045765206j,
+0.2739362226285564 - 1.941786875844713j,
+-0.2739362226285564 -1.941786875844713j])
+
+b_arr = np.array([-0.01734012457471826 - 0.04630639291680322j,
+-0.01734012457471826 + 0.04630639291680322j,
+-0.7399169923225014 + 0.8395179978099844j,
+-0.7399169923225014 - 0.8395179978099844j,
+5.840628642184073 + 0.9536009057643667j,
+5.840628642184073 - 0.9536009057643667j,
+-5.583371525286853 - 11.20854319126599j,
+-5.583371525286853 + 11.20854319126599j])
+
+def zp_pade(z):
+    """
+    Pade approximations to plasma dispersion function.
+    
+    Keyword arguments:
+    z: dimensionless argument of the plasma dispersion function.
+    
+    Return the value of Zp(z) using Pade approximations.
+    """
+    return np.sum(b_arr/(z-c_arr))
+
+def zp_sp(z):
+    """
+    Plasma dispersion function
+    Utilize the Dawnson function, dawsn, in scipy.special module.
+    Keyword arguments:
+    z: dimensionless argument of the plasma dispersion function.
+    
+    Return the value of Zp(z)
+    """
+    return -2. * scipy.special.dawsn(z) + 1.j * np.sqrt(np.pi) * np.exp(- z **2)
+    
+def zpd_sp(x):
+    """
+    Derivative of the plasma dispersion function
+    
+    """
+    return -2 * (1 + x * zp_sp(x))
+
 def zp(x):
     """
     plasma dispersion function                                
@@ -67,7 +116,7 @@ def j0(x):
     May be faster than general besselj(n, x) from mpmath library.
     Need profiler to see.
     """
-    return scsp.j0(float(str(x)))
+    return scipy.special.j0(float(str(x)))
 
 def eta(tc):
     """
