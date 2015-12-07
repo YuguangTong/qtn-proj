@@ -1,4 +1,4 @@
-import mpmath as mp
+import sympy.mpmath as mp
 import numpy as np
 import scipy.integrate as scint
 from .util import (zp, zpd, j0, f1, f2)
