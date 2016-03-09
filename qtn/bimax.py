@@ -1,8 +1,9 @@
 import sympy.mpmath as mp
 import numpy as np
 import scipy.integrate as scint
-from .util import (zp, zpd, j0, f1, f2, fperp)
+from .util import (zp, zpd, j0, f1, f2, fperp, timing)
 from .util import (boltzmann, emass, echarge, permittivity, cspeed)
+
 
 class BiMax(object):
     def __init__(self, ant_len, ant_rad, base_cap):
@@ -12,7 +13,6 @@ class BiMax(object):
         self.base_cap = base_cap
         self.z_unit = 8.313797e6
         self.v_unit = 1.62760e-15
-
     @staticmethod
     def d_l(z, wc, n, t):
         """

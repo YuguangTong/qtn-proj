@@ -4,7 +4,7 @@ import numpy as np
 from sympy.mpmath import mpf, mpc
 from sympy.mpmath import hyp2f1, gamma
 import scipy.special
-from scipy.special import j1, itj0y0
+from scipy.special import j1, itj0y0, sici
 
 # fundamental constants
 boltzmann = 1.3806488e-23  # J/K
@@ -143,6 +143,25 @@ def f2(x):
     term1 = 2*x**3 * (2*mp.si(2*x)-mp.si(x))
     term2 = 2*x**2 * (mp.cos(2*x) - mp.cos(x))
     term3 = x * (mp.sin(2*x) - 2*mp.sin(x)) - (mp.cos(2*x) - 4* mp.cos(x)  + 3)
+    return (term1 + term2 + term3)/(12 * x**2)
+
+def f1_sp(x):
+    """
+    An angular integral that appears in electron noise calculation.
+    
+    """
+    term1 = x * (sici(x)[0] - 0.5 * sici(2*x)[0])
+    term2 = -2 * np.sin(0.5 * x)**4
+    return (term1 + term2)/x**2
+
+def f2_sp(x):
+    """
+    Another angular integral in electron noise calculation.
+    
+    """
+    term1 = 2*x**3 * (2*np.si(2*x)-np.si(x))
+    term2 = 2*x**2 * (np.cos(2*x) - p.cos(x))
+    term3 = x * (np.sin(2*x) - 2*np.sin(x)) - (np.cos(2*x) - 4* np.cos(x)  + 3)
     return (term1 + term2 + term3)/(12 * x**2)
 
 def fperp(x):
