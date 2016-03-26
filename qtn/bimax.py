@@ -1,7 +1,7 @@
 import sympy.mpmath as mp
 import numpy as np
 import scipy.integrate as scint
-from .util import (zp, zpd, j0, f1, f2, fperp, timing)
+from .util import (zp, zpd, zp2d, j0, f1, f2, fperp, timing)
 from .util import (boltzmann, emass, echarge, permittivity, cspeed)
 
 
@@ -13,6 +13,7 @@ class BiMax(object):
         self.base_cap = base_cap
         self.z_unit = 8.313797e6
         self.v_unit = 1.62760e-15
+        
     @staticmethod
     def d_l(z, wc, n, t):
         """
@@ -24,7 +25,39 @@ class BiMax(object):
     
         """
         return 1 - (z/wc)**2 * (zpd(z) + n/t * zpd(z/mp.sqrt(t)))
+    
+    @staticmethod
+    def dz_dl(z, wc, n, t):
+        """
+        partial derivative of dl w.r.t z
+        
+        """
+        zwc2 = (z/wc)**2
+        nt = n/t
+        sqt = mp.sqrt(t)
+        zsqt = z/sqt
+        result = -2 * zwc2 / z * (zpd(z) + nt * zpd(zsqt))
+        result -= zwc2 * (zp2d(z) + nt/sqt * zp2d(zsqt))
+        return result
 
+    @staticmethod
+    def dz2_dl(z, wc, n, t):
+        """
+        second order P.D. \frac{\partial^2 dl}{\partial z^2}
+        The expansion is done by Mathematica. 
+        """
+        z2 = z*z
+        z4 = z2 * z2
+        t2 = t * t
+        t3 = t2 * t
+        tsq = mp.sqrt(t)
+        term_1 = 1 - 6 * z2 + 2 * z4
+        term_2 = (n/t3) * (t2 - 6 * t * z2 + 2 * z4)
+        term_3 = z * (3 - 7 * z2 + 2 * z4) * zp(z)
+        term_4 = n * z / t3 / tsq * (3 * t2 - 7 * t * z2 + 2 * z4) * zp(z/tsq)
+        
+        return 4 * (term_1 + term_2 + term_3 + term_4) / wc**2
+        
     @staticmethod
     def long_interval(w, n, t):
         """
@@ -42,7 +75,7 @@ class BiMax(object):
         int_range = [0, mp.inf]    
         for guess in guesses:
             try:
-                root = mp.findroot(lambda z: BiMax.d_l(z, w, n, t), guess)
+                root = mp.findroot(lambda z: BiMax.d_l(z, w, n, t).real, guess)
             except ValueError:
                 continue
             unique = True

@@ -111,6 +111,12 @@ def zpd(x):
     """
     return -mpf(2) * (mpf(1) + x * zp(x))
 
+def zp2d(x):
+    """
+    second derivative of plasma dispersion function.
+    """
+    return 4 * x - 2 * zp(x) + 4 * x**2 * zp(x)
+
 def j0(x):
     """zeroth order bessel function, the argument may be of "mpf" type.
     May be faster than general besselj(n, x) from mpmath library.
