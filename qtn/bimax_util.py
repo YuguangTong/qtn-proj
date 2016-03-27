@@ -63,8 +63,10 @@ def j02(x):
     A wrapper of Bessel function of the first kind,
     up to 1% accuracy.
     """
-    if x < 0.3:
+    if x < 0.1:
         return 1 - x**2 / 2
+    if x > 1000:
+        return (1 + fp.sin(2 * x)) / (fp.pi * x)
     return fp.besselj(0, x)**2
 
 def d_l(z, wc, n, t):
