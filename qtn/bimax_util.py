@@ -5,6 +5,14 @@ import numpy as np
 from scipy.optimize import fsolve
 from scipy.special import sici, j0
 
+# fundamental constants
+boltzmann = 1.3806488e-23  # J/K
+emass = 9.10938291e-31     # kg
+pmass = 1.67262178e-27
+echarge = 1.60217657e-19   # C
+permittivity = 8.854187817e-12  # F/m
+cspeed = 299792458         # m/s
+
 def zp(x):
     """
     plasma dispersion function                                
