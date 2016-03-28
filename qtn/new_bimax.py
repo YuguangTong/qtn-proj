@@ -1,6 +1,6 @@
 from sympy.mpmath import mp, fp
-from .bimax_util import (z_b, f1, j02, d_l, dz_dl,
-                         boltzmann, emass, echarge, permittivity, cspeed
+from .bimax_util import (z_b, f1, j02, d_l, dz_dl, do_cprofile,
+                         boltzmann, emass, echarge, permittivity, cspeed)
 # at this moment we do not do optimization. We will leave most of the calculation in mp context even though it could be done in fp context. 
 
 class new_BiMax(object):
@@ -38,7 +38,7 @@ class new_BiMax(object):
         """
         return f1(wc*l/z/fp.sqrt(2)) * z * \
             (fp.exp(-z**2) + n/fp.sqrt(t) * fp.exp(-z**2 / t)) / \
-                mp.fabs(d_l(z, wc, n, t))**2 / wc**2    
+                fp.fabs(d_l(z, wc, n, t))**2 / wc**2    
 
     def peak(self, wrel, n, t):
         """
@@ -60,12 +60,13 @@ class new_BiMax(object):
             guess = z_b(wc, 0, t)
         print('guess = ', guess)
         try: 
-            z0 = mp.findroot(lambda z: d_l(z, wc, n, t).real, guess)
+            z0 = fp.findroot(lambda z: d_l(z, wc, n, t).real, guess)
             print('z0 = ', z0)
             return z0
         except Exception:
             return None
         
+    #@do_cprofile     
     def new_bimax(self, wrel, l, n, t, tc):
         """
         parameters
@@ -89,7 +90,7 @@ class new_BiMax(object):
         # Only near plasma frequency does integrand peak near z0
         
         if wrel < 1 or wrel > 1.2:
-            result = fp.quad(lambda z: self.bimax_integrand(z, wc, l, n, t), [0, mp.inf])
+            result = fp.quad(lambda z: self.bimax_integrand(z, wc, l, n, t), [0, fp.inf])
             return result * self.v_unit * fp.sqrt(tc)
         
         # warn user of unexamined parameter region
@@ -106,7 +107,7 @@ class new_BiMax(object):
         
         if not z0:
             result = fp.quad(lambda z: self.bimax_integrand(z, wc, l, n, t), [0, fp.inf])
-            return result * self.v_unit * mp.sqrt(tc)
+            return result * self.v_unit * fp.sqrt(tc)
          
         # otherwise, evalute if this is a big peak
         
@@ -140,11 +141,11 @@ class new_BiMax(object):
         # num = f1(kl0) * j02(ka0) * z0 /wc**2 * \
         num = f1(kl0) * z0 /wc**2 * \
                 (fp.exp(-z0**2) + n/fp.sqrt(t)* fp.exp(-z0**2 / t))
-        fac = 2 * mp.atan(dz_el_re/el_img * dz)
+        fac = 2 * fp.atan(dz_el_re/el_img * dz)
         
         int_2 = fac * num / el_img / dz_el_re 
         
-        return (int_1 + int_2 + int_3) * self.v_unit * mp.sqrt(tc)
+        return (int_1 + int_2 + int_3) * self.v_unit * fp.sqrt(tc)
 
 
         
@@ -250,7 +251,7 @@ class new_BiMax(object):
         if dl_imag > 1e-4:
             
             print('direct evaluating integral when peak is small')
-            za_3 = mp.quad(lambda z: integrand_za(z, wc, l, n, t).imag, [z1, z0, z2])
+            za_3 = fp.quad(lambda z: integrand_za(z, wc, l, n, t).imag, [z1, z0, z2])
             za_3 = fp.mpc(0, za_3)
             
         else:
@@ -263,11 +264,11 @@ class new_BiMax(object):
             kl0 = klz / z0
             ka0 = kaz / z0
             num = f1(kl0) * j02(ka0) / z0**2 * (-el_img)
-            fac = 2 * mp.atan(dz_el_re/el_img_abs * dz)
+            fac = 2 * fp.atan(dz_el_re/el_img_abs * dz)
             za_3 = fp.mpc(0, fac * num / el_img_abs / dz_el_re)
 
         result = za_1 + za_2 + za_3
-        return result * self.z_unit * fp.mpc(0, 1) / fp.sqrt(tc)      
+        return result * self.z_unit * fp.mpc(0, 1) / fp.sqrt(tc) 
     
     def zr(self, wc, l, tc):
         """
@@ -290,4 +291,30 @@ class new_BiMax(object):
         ldc = self.ant_len/l
         nc = permittivity * boltzmann * tc/ ldc**2 / echarge**2
         wpc = fp.sqrt( nc * echarge**2 / emass / permittivity)
-        return fp.mpc(0, 1/(wc * wpc * self.base_cap))    
+        return fp.mpc(0, 1/(wc * wpc * self.base_cap))  
+     
+          
+    def gamma(self, wrel, l, n, t, tc):
+        """
+        parameters
+        ----------
+            wrel: w/w_pT, where w_pT --> plasma frequency of all electrons
+            l: l_ant / l_D, l_Dc --> Debye length of core electrons
+            n: n_h / n_c; density ratio between hot and cold electrons
+            t: t_h / t_c; temperature ratio
+            tc: t_c; core/ cold electron temperature
+
+        return
+        ------
+            antenna gain Gamma = V_a^2 / V_w^2 ?
+            
+        notes
+        -----
+            assume impedance mainly comes from base capacitance.
+        
+        """
+        wc = wrel * fp.sqrt(1+n)
+        za = self.za_l(wrel, l, n, t, tc)
+        zr = self.zr(wc, l, tc)                        
+        return fp.fabs((zr+za)/zr)**2 
+                        

@@ -3,7 +3,8 @@ from qtn.util import zp_sp, zpd_sp
 from sympy.mpmath import mp, fp
 import numpy as np
 from scipy.optimize import fsolve
-from scipy.special import sici, j0
+from scipy.special import sici, j0, dawsn
+import cProfile, pstats
 
 # fundamental constants
 boltzmann = 1.3806488e-23  # J/K
@@ -13,17 +14,32 @@ echarge = 1.60217657e-19   # C
 permittivity = 8.854187817e-12  # F/m
 cspeed = 299792458         # m/s
 
+def do_cprofile(func):
+    """
+    wrapper of func to do profile 
+    """
+    def profiled_func(*args, **kwargs):
+        profile = cProfile.Profile()
+        try:
+            profile.enable()
+            result = func(*args, **kwargs)
+            profile.disable()
+            return result
+        finally:
+            ps = pstats.Stats(profile)
+            ps.strip_dirs().sort_stats('time').print_stats(50)
+    return profiled_func
+
 def zp(x):
     """
     plasma dispersion function                                
     using complementary error function in mpmath library.                       
                                                                                 
     """
-    
-    #real = -fp.sqrt(fp.pi) * mp.exp(-x**2) * mp.erfi(x)
-    #imag = fp.sqrt(fp.pi) * mp.exp(-x**2)
 
-    return  mp.sqrt(mp.pi) * mp.exp(-x**2) * mp.mpc(-mp.erfi(x), '1')
+    return  fp.sqrt(fp.pi) * fp.exp(-x**2) * mp.mpc(-mp.erfi(x), 1)
+    
+    #return -2. * dawsn(x) + 1j * np.sqrt(np.pi) * np.exp(- x**2)
 
 
 def zpd(x):
@@ -62,6 +78,8 @@ def f1(x):
     An angular integral that appears in electron noise calculation.
     
     """
+    if x > 1000:
+        return fp.pi / (4 * x)
     term1 = x * (fp.si(x) - 0.5 * fp.si(2*x))
     term2 = -2 * fp.sin(0.5 * x)**4
     return (term1 + term2) / x**2
