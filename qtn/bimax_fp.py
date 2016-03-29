@@ -3,7 +3,7 @@ from .bimax_util import (z_b, f1, j02, d_l, dz_dl, do_cprofile,
                          boltzmann, emass, echarge, permittivity, cspeed)
 # at this moment we do not do optimization. We will leave most of the calculation in mp context even though it could be done in fp context. 
 
-class new_BiMax(object):
+class BiMax_fp(object):
     def __init__(self, ant_len, ant_rad, base_cap):
         self.ant_len = ant_len
         self.ant_rad = ant_rad
@@ -67,7 +67,7 @@ class new_BiMax(object):
             return None
         
     #@do_cprofile     
-    def new_bimax(self, wrel, l, n, t, tc):
+    def bimax_fp(self, wrel, l, n, t, tc):
         """
         parameters
         ----------

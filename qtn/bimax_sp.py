@@ -5,7 +5,7 @@ import scipy.optimize, scipy.special
 import numpy as np
 
 
-class new_BiMax_sp(object):
+class BiMax_sp(object):
     def __init__(self, ant_len, ant_rad, base_cap):
         self.ant_len = ant_len
         self.ant_rad = ant_rad
@@ -69,7 +69,7 @@ class new_BiMax_sp(object):
         except Exception:
             return None
         
-    def new_bimax_sp(self, wrel, l, n, t, tc):
+    def bimax_sp(self, wrel, l, n, t, tc):
         """
         parameters
         ----------
