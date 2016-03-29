@@ -2,9 +2,10 @@
 from qtn.util import zp_sp, zpd_sp
 from sympy.mpmath import mp, fp
 import numpy as np
+import scipy.integrate
 from scipy.optimize import fsolve
 from scipy.special import sici, j0, dawsn
-import cProfile, pstats
+import scipy, cProfile, pstats
 
 # fundamental constants
 boltzmann = 1.3806488e-23  # J/K
@@ -30,6 +31,22 @@ def do_cprofile(func):
             ps.strip_dirs().sort_stats('time').print_stats(50)
     return profiled_func
 
+def complex_quad(func, a, b, **kwargs):
+    """
+    A wrapper of scipy.integrate.quad function.
+    func is a mapping: R1 -> C1
+    
+    """
+    
+    def real_func(x):
+        return scipy.real(func(x))
+    def imag_func(x):
+        return scipy.imag(func(x))
+    real_integral = scipy.integrate.quad(real_func, a, b, **kwargs)
+    imag_integral = scipy.integrate.quad(imag_func, a, b, **kwargs)
+    return (real_integral[0] + 1j*imag_integral[0], real_integral[1:], imag_integral[1:])
+
+
 def zp(x):
     """
     plasma dispersion function                                
@@ -38,8 +55,14 @@ def zp(x):
     """
 
     return  fp.sqrt(fp.pi) * fp.exp(-x**2) * mp.mpc(-mp.erfi(x), 1)
-    
-    #return -2. * dawsn(x) + 1j * np.sqrt(np.pi) * np.exp(- x**2)
+
+def zp_sp(x):
+    """
+    plasma dispersion function                                
+    using complementary error function in mpmath library.                       
+                                                                                
+    """
+    return -2. * dawsn(x) + 1j * np.sqrt(np.pi) * np.exp(- x**2)
 
 
 def zpd(x):
@@ -49,21 +72,24 @@ def zpd(x):
     """
     return -2  * (1 + x * zp(x))
 
+def zpd_sp(x):
+    """
+    Derivative of plasma dispersion function.                                                   
+                                                                                
+    """
+    return -2  * (1 + x * zp_sp(x))
+
 def zp2d(x):
     """
     second derivative of plasma dispersion function.
     """
     return 4 * x - 2 * zp(x) + 4 * x**2 * zp(x)
 
-def d_l_sp(z, wc, n, t):
+def zp2d_sp(x):
     """
-    Longitudinal dispersion tensor
-    z: w/kv_Tc
-    wc: w/w_pcdef f1(x):
+    second derivative of plasma dispersion function.
     """
-
-    return 1 - (z/wc)**2 * (zpd_sp(z) + n/t * zpd_sp(z/np.sqrt(t)))
-
+    return 4 * x - 2 * zp_sp(x) + 4 * x**2 * zp_sp(x)
 
 def f1_sp(x):
     """
@@ -95,6 +121,17 @@ def j02(x):
         return (1 + fp.sin(2 * x)) / (fp.pi * x)
     return fp.besselj(0, x)**2
 
+def j02_sp(x):
+    """
+    A wrapper of Bessel function of the first kind,
+    up to 1% accuracy.
+    """
+    if x < 0.1:
+        return 1 - x**2 / 2
+    if x > 1000:
+        return (1 + np.sin(2 * x)) / (np.pi * x)
+    return j0(x)**2
+
 def d_l(z, wc, n, t):
     """
     Longitudinal dispersion tensor
@@ -105,6 +142,15 @@ def d_l(z, wc, n, t):
 
     """
     return 1 - (z/wc)**2 * (zpd(z) + n/t * zpd(z/fp.sqrt(t)))
+
+def d_l_sp(z, wc, n, t):
+    """
+    Longitudinal dispersion tensor
+    z: w/kv_Tc
+    wc: w/w_pcdef f1(x):
+    """
+
+    return 1 - (z/wc)**2 * (zpd_sp(z) + n/t * zpd_sp(z/np.sqrt(t)))
     
 def dz_dl(z, wc, n, t):
     """
@@ -117,6 +163,19 @@ def dz_dl(z, wc, n, t):
     zsqt = z/sqt
     result = -2 * zwc2 / z * (zpd(z) + nt * zpd(zsqt))
     result -= zwc2 * (zp2d(z) + nt/sqt * zp2d(zsqt))
+    return result
+
+def dz_dl_sp(z, wc, n, t):
+    """
+    partial derivative of dl w.r.t z
+        
+    """
+    zwc2 = (z/wc)**2
+    nt = n/t
+    sqt = np.sqrt(t)
+    zsqt = z/sqt
+    result = -2 * zwc2 / z * (zpd_sp(z) + nt * zpd_sp(zsqt))
+    result -= zwc2 * (zp2d_sp(z) + nt/sqt * zp2d_sp(zsqt))
     return result
 
 def dz2_dl(z, wc, n, t):
@@ -144,9 +203,9 @@ def z_b(wc, n, t):
     
     see Meyer-Vernet & Perche (1989), the "toolkit" paper
     """
-    term_1 = wc/(fp.sqrt(2) * (1 + n))
+    term_1 = wc/(np.sqrt(2) * (1 + n))
     term_2 = 3 * (1 + n * t) / (1 - (1 + n) / wc**2 ) 
     if term_2 < 0:
         print('Specified frequency is lower than total plasma frequency...')
-    term_2 = fp.sqrt(term_2)
+    term_2 = np.sqrt(term_2)
     return term_1 * term_2    
