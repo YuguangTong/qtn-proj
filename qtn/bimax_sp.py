@@ -1,9 +1,17 @@
-from sympy.mpmath import mp, fp
-from .bimax_util import (z_b, f1, j02, d_l, dz_dl, do_cprofile, f1_sp, j02_sp, d_l_sp, dz_dl_sp, complex_quad,
+from sympy.mpmath import fp
+from .bimax_util import (z_b, do_cprofile, f1_sp, j02_sp, d_l_sp,
+                         dz_dl_sp, complex_quad,
                          boltzmann, emass, echarge, permittivity, cspeed)
 import scipy.optimize, scipy.special
 import numpy as np
 
+# sqrt(pi)
+
+sqrt_pi = 1.7724538509055159
+
+# sqrt(2)
+
+sqrt_2 = 1.4142135623730951
 
 class BiMax_sp(object):
     def __init__(self, ant_len, ant_rad, base_cap):
@@ -38,7 +46,7 @@ class BiMax_sp(object):
             Since when ant_rad / ant_len <~ 0.005, the relative error
             in electron noise < 1%. 
         """
-        return f1_sp(wc*l/z/np.sqrt(2)) * z * \
+        return f1_sp(wc*l/z/sqrt_2) * z * \
             (np.exp(-z**2) + n/np.sqrt(t) * np.exp(-z**2 / t)) / \
                 np.absolute(d_l_sp(z, wc, n, t))**2 / wc**2  
 
@@ -60,11 +68,11 @@ class BiMax_sp(object):
             guess = z_b(wc, n, t)
         else:
             guess = z_b(wc, 0, t)
-        print('guess = ', guess)
+        #print('guess = ', guess)
         try: 
             sol = scipy.optimize.fsolve(lambda z: d_l_sp(z, wc, n, t).real, guess)
             z0 = sol[0]
-            print('z0 = ', z0, 'd_l.real = ', d_l_sp(z0, wc, n, t).real)
+            #print('z0 = ', z0, 'd_l.real = ', d_l_sp(z0, wc, n, t).real)
             return z0
         except Exception:
             return None
@@ -116,12 +124,12 @@ class BiMax_sp(object):
         
         dl_imag = np.fabs(d_l_sp(z0, wc, n, t).imag)
 
-        print('dl_imag = ', dl_imag)
+        # print('dl_imag = ', dl_imag)
         
         # if a small peak, evaluate directly
         
         if dl_imag > 1e-4:
-            print('direct evaluating integral when peak is small')
+            # print('direct evaluating integral when peak is small')
             #result = fp.quad(lambda z: self.bimax_integrand_sp(z, wc, l, n, t), [0, z0, fp.inf])
             result_1 = scipy.integrate.quad(lambda z: self.bimax_integrand_sp(z, wc, l, n, t), 0, z0)
             result_2 = scipy.integrate.quad(lambda z: self.bimax_integrand_sp(z, wc, l, n, t), z0, np.inf)
@@ -144,7 +152,7 @@ class BiMax_sp(object):
         el_img = np.fabs(d_l_sp(z0, wc, n, t).imag)
         dz_el_re = np.fabs(dz_dl_sp(z0, wc, n, t).real)
         
-        kl0 = wc*l/z0/np.sqrt(2)
+        kl0 = wc*l/z0/sqrt_2
         ka0 = kl0 * self.al_ratio
         
         num = f1_sp(kl0) * z0 * j02_sp(ka0) /wc**2 * \
@@ -177,7 +185,7 @@ class BiMax_sp(object):
         # wc: w/w_pc, where w_pc --> plasma frequency of core electrons
         wc = wrel * np.sqrt(1+n)
         
-        klz = wc*l/np.sqrt(2)
+        klz = wc*l/sqrt_2
         kaz = klz * self.al_ratio
         
         def integrand_za_sp(z, wc, l, n, t):
@@ -201,7 +209,7 @@ class BiMax_sp(object):
             # small argument expansion of e_l
             nt, wc2, z2 = n/t, wc**2, z**2
             el_re = 1 + 2 * (1 + nt) * z2 / wc2
-            el_imag = 2 * np.sqrt(np.pi) * z**3 / wc2 * (1 + nt/np.sqrt(t))
+            el_imag = 2 * sqrt_pi * z**3 / wc2 * (1 + nt/np.sqrt(t))
             denom = z2 * (el_re + 1j * el_imag)
             return num/denom   
         
@@ -319,7 +327,7 @@ class BiMax_sp(object):
             assume impedance mainly comes from base capacitance.
         
         """
-        wc = wrel * mp.sqrt(1+n)
+        wc = wrel * np.sqrt(1+n)
         za = self.za_l_sp(wrel, l, n, t, tc)
         zr = self.zr(wc, l, tc)                        
         return np.absolute((zr+za)/zr)**2 

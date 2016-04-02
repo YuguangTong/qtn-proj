@@ -1,11 +1,9 @@
 # utility functions for BiMax class
-from qtn.util import zp_sp, zpd_sp
-from sympy.mpmath import mp, fp
+from sympy.mpmath import fp
 import numpy as np
 import scipy.integrate
-from scipy.optimize import fsolve
-from scipy.special import sici, j0, dawsn
-import scipy, cProfile, pstats
+from scipy.special import sici, j0, wofz #dawsn
+import scipy
 
 # fundamental constants
 boltzmann = 1.3806488e-23  # J/K
@@ -19,6 +17,9 @@ def do_cprofile(func):
     """
     wrapper of func to do profile 
     """
+
+    import cProfile, pstats
+    
     def profiled_func(*args, **kwargs):
         profile = cProfile.Profile()
         try:
@@ -28,7 +29,7 @@ def do_cprofile(func):
             return result
         finally:
             ps = pstats.Stats(profile)
-            ps.strip_dirs().sort_stats('time').print_stats(50)
+            ps.strip_dirs().sort_stats('time').print_stats(20)
     return profiled_func
 
 def complex_quad(func, a, b, **kwargs):
@@ -47,22 +48,17 @@ def complex_quad(func, a, b, **kwargs):
     return (real_integral[0] + 1j*imag_integral[0], real_integral[1:], imag_integral[1:])
 
 
-def zp(x):
-    """
-    plasma dispersion function                                
-    using complementary error function in mpmath library.                       
-                                                                                
-    """
-
-    return  fp.sqrt(fp.pi) * fp.exp(-x**2) * mp.mpc(-mp.erfi(x), 1)
-
 def zp_sp(x):
     """
     plasma dispersion function                                
-    using complementary error function in mpmath library.                       
+    using faddeeva function from scipy.                       
                                                                                 
     """
-    return -2. * dawsn(x) + 1j * np.sqrt(np.pi) * np.exp(- x**2)
+    # return -2. * dawsn(x) + 1j * np.sqrt(np.pi) * np.exp(- x**2)
+    
+    sqrt_pi = 1.7724538509055159
+    return 1j * sqrt_pi * wofz(x)
+
 
 
 def zpd(x):
@@ -95,6 +91,8 @@ def f1_sp(x):
     """
     scipy version of the function f1 (Kuehl 1966, Couturier 1981)
     """
+    #if x > 1000:
+    #    return np.pi / (4 * x)
     term1 = x * (sici(x)[0] - 0.5 * sici(2 * x)[0])
     term2 = - 2 * np.sin(0.5 * x)**4
     return (term1 + term2) / x**2
