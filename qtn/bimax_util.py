@@ -2,7 +2,7 @@
 from sympy.mpmath import fp
 import numpy as np
 import scipy.integrate
-from scipy.special import sici, j0, wofz #dawsn
+from scipy.special import sici, j0, wofz, j1, itj0y0 #dawsn
 import scipy
 
 # fundamental constants
@@ -108,6 +108,17 @@ def f1(x):
     term2 = -2 * fp.sin(0.5 * x)**4
     return (term1 + term2) / x**2
 
+def fperp(x):
+    """
+    result of angular integration in proton noise integration.
+    
+    """
+    if x < 1:
+        x2 = x*x
+        return x2 * (1 - x2 / 8.)
+    else:
+        return 8./x * (2*itj0y0(x)[0] - itj0y0(2*x)[0] + j1(2*x) - 2*j1(x))
+
 def j02(x):
     """
     A wrapper of Bessel function of the first kind,
@@ -207,3 +218,4 @@ def z_b(wc, n, t):
         print('Specified frequency is lower than total plasma frequency...')
     term_2 = np.sqrt(term_2)
     return term_1 * term_2    
+

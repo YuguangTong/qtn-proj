@@ -1,8 +1,10 @@
 from sympy.mpmath import fp
-from .bimax_util import (z_b, do_cprofile, f1_sp, j02_sp, d_l_sp,
+from .bimax_util import (z_b, do_cprofile, f1_sp, fperp, j02_sp, d_l_sp,
                          dz_dl_sp, complex_quad,
                          boltzmann, emass, echarge, permittivity, cspeed)
-import scipy.optimize, scipy.special
+import scipy.optimize, scipy.special, scipy.integrate
+
+
 import numpy as np
 
 # sqrt(pi)
@@ -86,7 +88,7 @@ class BiMax_sp(object):
             l: l_ant / l_D, l_Dc --> Debye length of core electrons
             n: n_h / n_c; density ratio between hot and cold electrons
             t: t_h / t_c; temperature ratio
-            tc: t_c; core/ cold electron temperature
+            tc: t_c; core/ cold electron temperature (K)
         return
         ------
             electron thermal noise
@@ -174,6 +176,7 @@ class BiMax_sp(object):
             l: l_ant / l_D, l_Dc --> Debye length of core electrons
             n: n_h / n_c; density ratio between hot and cold electrons
             t: t_h / t_c; temperature ratio
+            tc: t_c; core/ cold electron temperature (K)
             
         return
         ------
@@ -259,7 +262,7 @@ class BiMax_sp(object):
         
         dl_imag = np.fabs(d_l_sp(z0, wc, n, t).imag)
 
-        print('dl_imag = ', dl_imag)
+        #print('dl_imag = ', dl_imag)
         
         # if a small peak, evaluate directly
         
@@ -291,7 +294,7 @@ class BiMax_sp(object):
             wc: w/w_pc, where w_pc --> plasma frequency of core electrons
             l: l_ant / l_D, l_Dc --> Debye length of core electrons
             n: n_h / n_c; density ratio between hot and cold electrons
-            tc: t_c; core/ cold electron temperature
+            tc: t_c; core/ cold electron temperature (K)
 
         return
         ------
@@ -316,15 +319,16 @@ class BiMax_sp(object):
             l: l_ant / l_D, l_Dc --> Debye length of core electrons
             n: n_h / n_c; density ratio between hot and cold electrons
             t: t_h / t_c; temperature ratio
-            tc: t_c; core/ cold electron temperature
+            tc: t_c; core/ cold electron temperature (K)
 
         return
         ------
-            antenna gain Gamma = V_a^2 / V_w^2 ?
+            antenna gain Gamma = V_w^2 / V_a^2
             
         notes
         -----
             assume impedance mainly comes from base capacitance.
+            see Couturier et al. (1981) 10.1029/JA086iA13p11127
         
         """
         wc = wrel * np.sqrt(1+n)
@@ -332,3 +336,66 @@ class BiMax_sp(object):
         zr = self.zr(wc, l, tc)                        
         return np.absolute((zr+za)/zr)**2 
                         
+
+    def proton_sp(self, f, ne, n, t, tp, tc, vsw, interp = False, interp_func = None):
+        
+        """
+        parameters
+        ----------
+            f: frequency Hz
+            ne: total electron density (cm^-3)
+            n: n_h / n_c; density ratio between hot and cold electrons
+            t: t_h / t_c; temperature ratio
+            tp: proton temperature (eV)
+            tc: t_c; core/ cold electron temperature (eV)
+            vsw: solar wind velocity (km/s)
+
+        keyword parameters
+        ------------------
+            interp: whether to calculate the integral by interpolation
+                    if True, a interpolation function must be supplied by "inter_fn"
+            interp_func: interpolation function to speed up calculation
+            
+        return
+        ------
+            proton thermal noise power density (V^2 / Hz)          
+            
+        notes
+        -----
+            see Issautier et al. (1999) 10.1029/1998JA900165
+        
+        """
+        # change to SI unit
+        ne = ne * 1e6
+        tp, tc = tp * 11604.519339023796, tc * 11604.519339023796
+        #te = tc * (1 + t * n) / (1 + n)
+        
+        # effective temperature 
+        tg = tc * (1 + n)/(1 + n/t)
+        
+        # debye length
+        # ld = np.sqrt(permittivity * boltzmann * tg/ne/ echarge**2)
+        ld = 69.008978452135807 * np.sqrt(tg / ne)
+        
+        lrel = self.ant_len / ld
+        
+        # core electron thermal speed
+        # vte = np.sqrt(2 * boltzmann * tc/ emass)
+        vte = 5505.6947431410626 * np.sqrt(tc)
+        
+        # dimensionless params in the integral
+        omega = f * 2 * np.pi * ld/vsw
+        tep = tg/tp
+        M = vsw/vte
+        
+        if interp:
+            integral = interp_func(lrel, omega, tep)
+        else:
+            integrand = lambda y: \
+                y * fperp(y * lrel)/ (y**2 + 1 + omega**2) / (y**2 + 1 + omega**2 + tep)
+            integral = scipy.integrate.quad(integrand, 0, np.inf, epsrel = 1.e-4) 
+        
+        coeff = np.sqrt(2*emass*boltzmann * tg)/(4*np.pi*permittivity * M)
+        # coeff = 4.5075701323600409e-17 * np.sqrt(tg) / M 
+        return coeff *  integral[0]        
+    
