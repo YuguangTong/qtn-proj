@@ -1,5 +1,5 @@
 # utility functions for BiMax class
-from sympy.mpmath import fp
+from mpmath import fp
 import numpy as np
 import scipy.integrate
 from scipy.special import sici, j0, wofz, j1, itj0y0 #dawsn

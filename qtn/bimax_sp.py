@@ -1,4 +1,4 @@
-from sympy.mpmath import fp
+from mpmath import fp
 from .bimax_util import (z_b, do_cprofile, f1_sp, fperp, j02_sp, d_l_sp,
                          dz_dl_sp, complex_quad,
                          boltzmann, emass, echarge, permittivity, cspeed)
@@ -335,7 +335,45 @@ class BiMax_sp(object):
         za = self.za_l_sp(wrel, l, n, t, tc)
         zr = self.zr(wc, l, tc)                        
         return np.absolute((zr+za)/zr)**2 
-                        
+
+    def gamma_shot_sp(self, wrel, l, n, t, tc):
+        """
+        parameters
+        ----------
+            wrel: w/w_pT, where w_pT --> plasma frequency of all electrons
+            l: l_ant / l_D, l_Dc --> Debye length of core electrons
+            n: n_h / n_c; density ratio between hot and cold electrons
+            t: t_h / t_c; temperature ratio
+            tc: t_c; core/ cold electron temperature (K)
+
+        return
+        ------
+            [gamma, shot_noise]
+            antenna gain Gamma = V_w^2 / V_a^2
+
+            
+        notes
+        -----
+            assume impedance mainly comes from base capacitance.
+            see Couturier et al. (1981) 10.1029/JA086iA13p11127
+        
+        """
+        wc = wrel * np.sqrt(1+n)
+        za = self.za_l_sp(wrel, l, n, t, tc)
+        zr = self.zr(wc, l, tc)                        
+        gamma = np.absolute((zr+za)/zr)**2
+
+        ldc = self.ant_len/l
+        nc  =permittivity * boltzmann * tc/ ldc**2 / echarge**2
+        vtc = np.sqrt(2 * boltzmann * tc/ emass)
+        ne = nc * vtc * (1 + n * np.sqrt(t)) * 2 * np.pi * self.ant_rad * self.ant_len / np.sqrt(4 * np.pi)        
+        #---------------------------------------------------------
+        # a: coefficient in shot noise. see Issautier et al. 1999
+        #---------------------------------------------------------
+        # a = 1 + echarge * 3.6 / boltzmann/tc
+        a = 1
+        shot_noise = 2 * a * echarge**2 * np.abs(za)**2 * ne
+        return [gamma, shot_noise]
 
     def proton_sp(self, f, ne, n, t, tp, tc, vsw, interp = False, interp_func = None):
         
@@ -399,3 +437,31 @@ class BiMax_sp(object):
         # coeff = 4.5075701323600409e-17 * np.sqrt(tg) / M 
         return coeff *  integral[0]        
     
+    def electron_noise_sp(self, f, ne, n, t, tp, tc, vsw):
+        """
+        a wrapper for bimax_sp method.
+        takes in raw argument and calculate the relative arguments.
+
+        """
+        ne *= 1e6
+        nc = ne/(1+n)
+        tc *= echarge/ boltzmann
+        ldc = np.sqrt(permittivity * boltzmann * tc/nc/echarge**2)
+        lc = self.ant_len/ldc
+        w_p = np.sqrt(echarge**2 * ne/emass/permittivity)
+        wrel = f * 2 * np.pi/w_p
+        return self.bimax_sp(wrel, lc, n, t, tc)
+
+    def gain_shot_sp(self, f, ne, n, t, tp, tc, vsw):
+        """
+        a wrapper for gamma_shot method.
+        
+        """
+        ne *= 1e6
+        nc = ne/(1+n)
+        tc *= echarge/ boltzmann
+        ldc = np.sqrt(permittivity * boltzmann * tc/nc/echarge**2)
+        lc = self.ant_len/ldc
+        w_p = np.sqrt(echarge**2 * ne/emass/permittivity)
+        wrel = f * 2 * np.pi/w_p
+        return self.gamma_shot_sp(wrel, lc, n, t, tc)

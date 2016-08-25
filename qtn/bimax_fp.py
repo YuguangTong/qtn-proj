@@ -1,4 +1,4 @@
-from sympy.mpmath import mp, fp
+from mpmath import mp, fp
 from .bimax_util import (z_b, f1, j02, d_l, dz_dl, do_cprofile,
                          boltzmann, emass, echarge, permittivity, cspeed)
 # at this moment we do not do optimization. We will leave most of the calculation in mp context even though it could be done in fp context. 

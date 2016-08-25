@@ -1,8 +1,8 @@
 import time
-import sympy.mpmath as mp
+import mpmath as mp
 import numpy as np
-from sympy.mpmath import mpf, mpc
-from sympy.mpmath import hyp2f1, gamma
+from mpmath import mpf, mpc
+from mpmath import hyp2f1, gamma
 import scipy.special
 from scipy.special import j1, itj0y0, sici
 

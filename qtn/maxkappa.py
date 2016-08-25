@@ -1,7 +1,7 @@
-import sympy.mpmath as mp
+import mpmath as mp
 import numpy as np
 import scipy.integrate as scint
-from sympy.mpmath import gamma
+from mpmath import gamma
 from .util import (zk, zp, zpd, j0, f1)
 from .util import (boltzmann, emass, echarge, permittivity, cspeed, fperp)
 
