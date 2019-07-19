@@ -1,5 +1,6 @@
 .ipynb_checkpoints/
 .idea/
+__init__.pyc
 notebook/.gitignore~
 qtn/__init__.pyc
 qtn/__pycache__/
