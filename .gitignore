@@ -1,6 +1,6 @@
-*.DS_Store
-*~
-qtn/*~
-qtn/*.pyc
-qtn/__pycache__/
 .ipynb_checkpoints/
+.idea/
+notebook/.gitignore~
+qtn/__init__.pyc
+qtn/__pycache__/
+survey/.DS_Store
